@@ -6,7 +6,7 @@ Without generic types there would be no third-party market for Blazor components
 
 `System.Reflection` is a namespace in .NET that lets you deal with types. Every object has a `GetType` method that returns a Type object. You can inspect the properties of that type, and you can read and write property values. 
 
-Create a new **Blazor Server** project called **GenericComponentDemo**
+Create a new **Blazor Server** application project called **GenericComponentDemo**
 
 To the *Shared* folder add a new Razor Component called *GenericComponent.razor*:
 
@@ -562,6 +562,10 @@ Run the app and make a couple changes.
 
 Let's do something a little more complex. We'll create a generic component that lets you work with a list of objects, showing the available objects in a column on the left, and the selected objects in a column on the right, and then lets the user move items back and forth, effectively selecting a new list from the list of all the objects.
 
+This is what it looks like:
+
+![image-20230624110955348](images/image-20230624110955348.png)
+
 Create a **Blazor Server** application project called **ObjectPickerDemo**.
 
 Add the following NuGet Package:
@@ -616,7 +620,6 @@ Replace *Pages\Index.razor* with the following:
         AllPeople.Add(new Person { Id = 2, Name = "Mike Easter" });
         AllPeople.Add(new Person { Id = 3, Name = "Ben Drinkin" });
         AllPeople.Add(new Person { Id = 4, Name = "Pikop Andropov" });
-        SelectedPeople.Add(AllPeople[0]);
     }
 
     public class Person
@@ -627,15 +630,87 @@ Replace *Pages\Index.razor* with the following:
 }
 ```
 
-TODO: Explain
+This is a simple demo.
 
-![image-20230624110955348](images/image-20230624110955348.png)
+Again we have a `Person` class:
 
-TODO: Explain
+```c#
+public class Person
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+```
 
+In the initializer, we're creating a new `List<Person>` and assigning it to the `AllPeople` variable.
 
+Then we add 4 `Person` objects to it:
 
-Let's take a look at how ObjectPicker works
+```c#
+protected override void OnInitialized()
+{
+    AllPeople = new List<Person>();
+    AllPeople.Add(new Person { Id = 1, Name = "Isadora Jarr" });
+    AllPeople.Add(new Person { Id = 2, Name = "Mike Easter" });
+    AllPeople.Add(new Person { Id = 3, Name = "Ben Drinkin" });
+    AllPeople.Add(new Person { Id = 4, Name = "Pikop Andropov" });
+}
+```
+
+Note this secondary `List<Person>`:
+
+```c#
+List<Person> SelectedPeople = new List<Person>();
+```
+
+This will contain the objects that the user has selected, and will change as they are selected.
+
+The only other variable is a string (`DisplayMessage`) used to show the user how many people are currently selected.
+
+Check out the markup:
+
+```xml
+<h3>Select People</h3>
+<div style="background-color:lightgray;padding:10px;">
+    <ObjectPicker AllItems="AllPeople"
+                  ItemTypePlural="People"
+                  SelectedItems="SelectedPeople"
+                  TextPropertyName="Name"
+                  ValuePropertyName="Id"
+                  TItem="Person"
+                  ComponentUpdated="ObjectPicker_Updated" />
+</div>
+<span>@DisplayMessage</span>
+```
+
+We are setting the parameter properties of the `ObjectPicker` so it has the information it needs to use `System.Reflection` to parse out the details of the objects.
+
+`AllItems` is the list of all items, which we initialized with four people.
+
+`ItemTypePlural` is the pluralized form of the object. We can't infer this by adding an "s" to the end of the type name. In our case, it's "People."
+
+`SelectedItems` is the list of selected items.
+
+`TextPropertyName` is the name of the property, the value of which will be displayed in both columns. In this case it's the `Person`'s Name property.
+
+`ValuePropertyName` is the name of the property, the value of which identifies the object uniquely. This would normally be a number, a `Guid`, or an otherwise unique value. In our case it's the `Person`'s Id property.
+
+`Titem` is the name of the type of the objects in the `AllItems` and `SelectedItems` lists. In our case it's "Person."
+
+`ComponentUpdated` is an event callback that occurs whenever the `SelectedItems` list is modified, meaning `Person` objects are added and removed. In our case, it's the `ObjectPicker_Updated()` method:
+
+```c#
+public void ObjectPicker_Updated()
+{
+    DisplayMessage = $"Selected: {SelectedPeople.Count}";
+}
+```
+
+Run the app and play around with it. You can double-click on an item to move it from one side or the other. You can also copy all of the items in one side to the other side. Notice how the buttons are enabled and disabled depending on the state of the two lists.
+
+Also notice that objects in our `AllPeople` list are never actually removed when they are added to the `SelectedPeople` list. 
+
+Let's take a look at how `ObjectPicker` works. Here's the source, which you can get from the Github repo at  https://github.com/carlfranklin/AppvNext.ObjectPicker
 
 *ObjectPicker.razor*:
 
@@ -725,9 +800,19 @@ Let's take a look at how ObjectPicker works
 </table>
 ```
 
-TODO: Explain
+You can see `@typeparam TItem` at the top, just as in our simple demo. `Titem` is now the type `Person`. We can use it as a data type in our generic code.
 
+It may look complicated, but it's basically a `<table>` with three columns.
 
+The header row shows **All People** on the left, and **Selected People** on the right.
+
+The second row shows three columns: all people on the left, selected people on the right, and the control buttons in the middle.
+
+Take a look at references to `@ItemText(Item)` and `@ItemValue(Item)` on lines such as 22 and 25.
+
+These are both methods that retrieve the item's text and value property values.
+
+Let's look at the code-behind class for this component.
 
 *ObjectPicker.razor.cs*:
 
@@ -923,11 +1008,93 @@ namespace AppvNext.ObjectPicker
 }
 ```
 
-TODO: Explain
+Once we understand how the `ItemValue` and `ItemText` methods work, it will all make sense.
+
+Check them out:
+
+```c#
+protected string ItemValue(TItem Item)
+{
+    return Item.GetType()
+    .GetProperty(ValuePropertyName)
+    .GetValue(Item, null)
+    .ToString();
+}
+
+protected string ItemText(TItem Item)
+{
+    return Item.GetType()
+    .GetProperty(TextPropertyName)
+    .GetValue(Item, null)
+    .ToString();
+}
+```
+
+These methods simply get the value of the properties of `Person` that are required to create this component. Now the markup should make more sense.
+
+A lot of the code is button click handlers and code that determines which buttons are enabled.
+
+Here's another very important bit of code, that I alluded to earlier:
+
+```c#
+protected override void OnParametersSet()
+{
+    // make a copy of the items
+    AllItemsPrivate = AllItems.ToArray().ToList();
+
+    if (AllItemsPrivate.Count > 0)
+    {
+        // remove the items that exist in SelectedItems
+        foreach (var item in SelectedItems)
+        {
+            var id = item.GetType()
+            .GetProperty(ValuePropertyName)
+            .GetValue(item, null)
+            .ToString();
+
+            var ItemFromAllItems =
+            (from x in AllItemsPrivate
+             where x.GetType()
+             .GetProperty(ValuePropertyName)
+             .GetValue(x, null)
+             .ToString() == id
+             select x).FirstOrDefault();
+
+            if (ItemFromAllItems != null)
+            {
+                AllItemsPrivate.Remove(ItemFromAllItems);
+            }
+        }
+    }
+    if (AllItemsPrivate.Count > 0)
+    {
+        SelectedItem = AllItemsPrivate.First();
+    }
+    else if (SelectedItems.Count > 0)
+    {
+        SelectedItem = SelectedItems.First();
+    }
+    UpdateButtonEnabledStates();
+}
+```
+
+This line makes a copy of the objects in `AllItems`:
+
+```c#
+AllItemsPrivate = AllItems.ToArray().ToList();
+```
+
+The `.ToArray()` method copies the objects to a new array, and then the `.ToList()` method copies the array to a new list. This effectively makes a copy of the list, so we don't clobber the demo app's `AllPeople` list, which our app relies on not to change.
+
+Next we go into a loop to remove the items that exist in `SelectedItems` so that the UI shows the list of all items correctly.
 
 ## Generic Edit Forms
 
-TODO: Explain
+Next, I'd like to highlight a generic component that a very smart developer created to automatically generate edit forms in Blazor.
+
+I got this code from his blog post at https://www.meziantou.net/automatically-generate-a-form-from-an-object-in-blazor.htm
+
+I'm not going to go into the internals of the component, the source of which you can find on GitHub at https://github.com/meziantou/Meziantou.Framework/blob/ee664b6cf25ab0ae70ceaee55fcd3ef77c30dc4d/src/Meziantou.AspNetCore.Components/GenericForm.razor, but I will add to his demo to show you what is possible with generic components.
 
 Create a new **Blazor Server** application project called **GenericEditFormDemo**
 
@@ -982,9 +1149,7 @@ Replace *Pages\Index.razor* with the following:
 
 @code
 {
-
     public Model MyModel { get; set; } = new Model();
-
     public record Model
     {
         [MinLength(3)]
@@ -1048,15 +1213,31 @@ Replace *Pages\Index.razor* with the following:
 }
 ```
 
-TODO: Explain
+The magic is done by adding attributes to properties of the model class, which is actually a record type called `Model`. 
+
+> :information_source: For an explanation of records vs classes and structs, check out my YouTube video at https://youtu.be/lYoYHWDFGVk
+
+The component goes inside an `<EditForm>`, and is called `<GenericForm>`.
+
+Inside that, there's a template for each property:
+
+```xml
+<FieldTemplate Context="field">
+    <div class="form-group">
+        <label for="@field.EditorId">@field.DisplayName</label>
+        @field.EditorTemplate
+        @field.FieldValidationTemplate
+    </div>
+</FieldTemplate>
+```
+
+Run the app and have fun with it!
 
 ![image-20230624113036316](images/image-20230624113036316.png)
 
 Scroll to the bottom to view the values of each property in the model:
 
 ![image-20230624113103438](images/image-20230624113103438.png)
-
-TODO: Explain
 
 > For more information on Generic Types see BlazorTrain episode 52 at https://www.youtube.com/watch?v=jmGPUu2_t1U
 
