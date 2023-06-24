@@ -1,0 +1,35 @@
+﻿@page "/"
+
+<PageTitle>Index</PageTitle>
+
+<GenericComponent TItem="Person"
+                  Item="@TestPerson"
+                  TextPropertyName="Name"
+                  ValuePropertyName="Id"
+                  Updated="PersonUpdated" />
+
+<h4>@DisplayString</h4>
+
+@code
+{
+    Person TestPerson;
+    string DisplayString = "";
+
+    public class Person
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+    }
+
+    void PersonUpdated()
+    {
+        DisplayString = $"The Person object's Id value is" +
+                    $" {TestPerson.Id} and its Text value is {TestPerson.Name}";
+    }
+
+    protected override void OnInitialized()
+    {
+        TestPerson = new Person() { Id = 42, Name = "Carl Franklin" };
+        PersonUpdated();
+    }
+}

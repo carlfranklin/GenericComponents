@@ -1,0 +1,96 @@
+﻿@page "/"
+@*
+    I learned about this guy and his code from a Bing search, landing here:
+    https://www.meziantou.net/automatically-generate-a-form-from-an-object-in-blazor.htm
+*@
+
+<h1>Generic Form!</h1>
+
+<EditForm Model="MyModel">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <GenericForm @bind-Model="MyModel" 
+                 EditorClass="form-control" 
+                 EnableFieldValidation="false">
+        <FieldTemplate Context="field">
+            <div class="form-group">
+                <label for="@field.EditorId">@field.DisplayName</label>
+                @field.EditorTemplate
+                @field.FieldValidationTemplate
+            </div>
+        </FieldTemplate>
+    </GenericForm>
+</EditForm>
+
+<button type="button" @onclick="() => StateHasChanged()">Refresh</button>
+
+<div>
+    @MyModel
+</div>
+
+@code
+{
+
+    public Model MyModel { get; set; } = new Model();
+
+    public record Model
+    {
+        [MinLength(3)]
+        [Display(Name = "String Value with custom name")]
+        public string StringValue { get; set; } = "meziantou";
+
+        [DisplayName("Custom name")]
+        public string StringValueWithCustomName { get; set; } = "Gérald Barré";
+
+        [DataType(DataType.Date)]
+        public DateTime DateValue { get; set; } = DateTime.Now;
+
+        public DateTime DateTimeValue { get; set; } = DateTime.Now;
+
+        [DataType(DataType.Date)]
+        public DateTimeOffset DateOffsetValue { get; set; } = DateTimeOffset.Now;
+
+        public DateTimeOffset DateTimeOffsetValue { get; set; } = DateTimeOffset.Now;
+
+        public bool BooleanValue { get; set; } = true;
+
+        public short Int16Value { get; set; }
+
+        public int Int32Value { get; set; }
+
+        public long Int64Value { get; set; }
+
+        public float SingleValue { get; set; }
+
+        public double DoubleValue { get; set; }
+
+        public decimal DecimalValue { get; set; }
+
+        // This is not visible in the form
+        public string ReadOnly { get; }
+
+        // This is not visible in the form
+        [Editable(false)]
+        public string NotEditable { get; }
+
+        [Editor(typeof(InputTextArea), typeof(InputBase<>))]
+        public string TextArea { get; set; }
+
+        [DataType(DataType.EmailAddress)]
+        public string Email { get; set; }
+
+        [DataType(DataType.Password)]
+        public string Password { get; set; }
+
+        [DataType(DataType.MultilineText)]
+        public string MultilineText { get; set; }
+
+        [DataType(DataType.PhoneNumber)]
+        public string PhoneNumber { get; set; }
+
+        [DataType(DataType.Url)]
+        public string Url { get; set; }
+
+        public Uri Uri { get; set; }
+    }
+}

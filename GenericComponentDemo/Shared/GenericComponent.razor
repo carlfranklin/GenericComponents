@@ -1,0 +1,125 @@
+﻿@typeparam TItem
+
+<style>
+    .grid-row {
+        display: grid;
+        grid-template-columns: 50% 50%;
+        padding: 4px;
+        width: 25%;
+    }
+
+    .grid-left-item {
+        padding: 4px;
+        text-align: left;
+    }
+
+    .grid-right-item {
+        padding: 4px;
+        text-align: right;
+    }
+</style>
+
+<h2>@ItemName Editor</h2>
+
+<div>
+    <div class="grid-row">
+        <div class="grid-right-item">@ValuePropertyName:</div>
+        <div class="grid-left-item"><input @bind="Value" /></div>
+    </div>
+    <div class="grid-row">
+        <div class="grid-right-item">@TextPropertyName:</div>
+        <div class="grid-left-item"><input @bind="Text" /></div>
+    </div>
+</div>
+
+
+@code {
+
+    // The generic item we're working with
+    [Parameter]
+    public TItem Item { get; set; }
+
+    // Name of the property to display
+    [Parameter]
+    public string TextPropertyName { get; set; }
+
+    // Name of the property to treat as a value
+    [Parameter]
+    public string ValuePropertyName { get; set; }
+
+    // Event callback for updates
+    [Parameter]
+    public EventCallback Updated { get; set; }
+
+    // Name of the type (Person)
+    public string ItemName
+    {
+        get
+        {
+            return Item.GetType().Name;
+        }
+    }
+
+    // Generic Text property handler
+    public string Text
+    {
+        get
+        {
+            return Item.GetType()
+                .GetProperty(TextPropertyName)
+                .GetValue(Item).ToString();
+        }
+        set
+        {
+            Item.GetType()
+                .GetProperty(TextPropertyName)
+                .SetValue(Item, value);
+            Updated.InvokeAsync();
+        }
+    }
+
+    // Generic Value property handler
+    public int Value
+    {
+        get
+        {
+            return Convert.ToInt32(Item.GetType()
+                .GetProperty(ValuePropertyName)
+                .GetValue(Item));
+        }
+        set
+        {
+            Item.GetType()
+                .GetProperty(ValuePropertyName)
+                .SetValue(Item, value);
+            Updated.InvokeAsync();
+        }
+    }
+
+    // read-only property to show in the markup
+    string DisplayMessage
+    {
+        get
+        {
+            // Get a Type from TItem
+            Type t = typeof(TItem);
+
+            // Get the type's name: Person
+            string name = t.Name;
+
+            // Get the text PropertyInfo object using System.Reflection
+            var textProperty = t.GetProperty(TextPropertyName);
+
+            // Read the value of the Item object's text property
+            string text = textProperty.GetValue(Item).ToString();
+
+            // Do the same for the value property
+            var valueProperty = t.GetProperty(ValuePropertyName);
+            string value = valueProperty.GetValue(Item).ToString();
+
+            // Display a string
+            return $"The {name} object's {ValuePropertyName} value is" +
+                    $" {value} and its {TextPropertyName} value is {text}";
+        }
+    }
+}
